@@ -1,0 +1,117 @@
+{
+  "description": "Windows persistence mechanism detection rules for v1",
+  "version": "1.0.0",
+  "rules": [
+    {
+      "id": "PERSIST-001",
+      "name": "Run/RunOnce Registry Key",
+      "description": "Detects modifications to Run/RunOnce registry keys commonly used for persistence",
+      "registry_paths": [
+        "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run",
+        "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\RunOnce",
+        "HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run",
+        "HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\RunOnce",
+        "HKLM\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Run",
+        "HKLM\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\RunOnce"
+      ],
+      "severity": "high",
+      "mitre_technique": "T1547.001"
+    },
+    {
+      "id": "PERSIST-002",
+      "name": "Scheduled Task Creation",
+      "description": "Detects creation of scheduled tasks via event logs or registry",
+      "event_ids": [4698, 106],
+      "registry_paths": [
+        "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tasks",
+        "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree"
+      ],
+      "severity": "high",
+      "mitre_technique": "T1053.005"
+    },
+    {
+      "id": "PERSIST-003",
+      "name": "Service Installation",
+      "description": "Detects new service installations",
+      "event_ids": [7045, 4697],
+      "registry_paths": [
+        "HKLM\\SYSTEM\\CurrentControlSet\\Services"
+      ],
+      "severity": "high",
+      "mitre_technique": "T1543.003"
+    },
+    {
+      "id": "PERSIST-004",
+      "name": "WMI Event Subscription",
+      "description": "Detects WMI permanent event subscriptions used for persistence",
+      "event_ids": [19, 20, 21],
+      "severity": "critical",
+      "mitre_technique": "T1546.003"
+    },
+    {
+      "id": "PERSIST-005",
+      "name": "Startup Folder Modification",
+      "description": "Detects files placed in startup folders",
+      "file_paths": [
+        "C:\\Users\\*\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup",
+        "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Startup"
+      ],
+      "severity": "high",
+      "mitre_technique": "T1547.001"
+    },
+    {
+      "id": "PERSIST-006",
+      "name": "Image File Execution Options (IFEO)",
+      "description": "Detects IFEO debugger persistence mechanism",
+      "registry_paths": [
+        "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options"
+      ],
+      "severity": "critical",
+      "mitre_technique": "T1546.012"
+    },
+    {
+      "id": "PERSIST-007",
+      "name": "AppInit DLLs",
+      "description": "Detects AppInit_DLLs persistence mechanism",
+      "registry_paths": [
+        "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Windows\\AppInit_DLLs",
+        "HKLM\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows NT\\CurrentVersion\\Windows\\AppInit_DLLs"
+      ],
+      "severity": "critical",
+      "mitre_technique": "T1546.010"
+    },
+    {
+      "id": "PERSIST-008",
+      "name": "Winlogon Helper",
+      "description": "Detects Winlogon helper DLL/executable persistence",
+      "registry_paths": [
+        "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\\Shell",
+        "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\\Userinit",
+        "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\\Notify"
+      ],
+      "severity": "critical",
+      "mitre_technique": "T1547.004"
+    },
+    {
+      "id": "PERSIST-009",
+      "name": "DLL Search Order Hijacking",
+      "description": "Detects known DLL hijacking paths in registry",
+      "registry_paths": [
+        "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\KnownDLLs"
+      ],
+      "severity": "high",
+      "mitre_technique": "T1574.001"
+    },
+    {
+      "id": "PERSIST-010",
+      "name": "COM Object Hijacking",
+      "description": "Detects COM object hijacking for persistence",
+      "registry_paths": [
+        "HKCU\\SOFTWARE\\Classes\\CLSID",
+        "HKLM\\SOFTWARE\\Classes\\CLSID"
+      ],
+      "severity": "high",
+      "mitre_technique": "T1546.015"
+    }
+  ]
+}

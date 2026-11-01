@@ -1,0 +1,49 @@
+# Byte-compiled
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.venv/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Environment
+.env
+.env.local
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Node
+node_modules/
+dist/
+build/
+.cache/
+
+# Coverage
+htmlcov/
+.coverage
+coverage.xml
+
+# Evidence storage (don't commit case data!)
+backend/cases_data/
+
+# Reports output
+backend/reports_output/
+
+# Logs
+*.log
