@@ -46,3 +46,29 @@ async def test_case_lifecycle():
         # Delete case
         del_resp = await client.delete(f"/api/v1/cases/{case_id}")
         assert del_resp.status_code == 204
+
+
+@pytest.mark.asyncio
+async def test_web_gui_root_serving():
+    """Verify that the root endpoint serves the local HTML Web GUI and static assets."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.get("/")
+        assert resp.status_code == 200
+        assert "Threat Hunting Workbench" in resp.text
+        assert "THREAT WORKBENCH" in resp.text
+
+        # Verify static CSS
+        css_resp = await client.get("/static/styles.css")
+        assert css_resp.status_code == 200
+        assert "--bg-dark" in css_resp.text
+
+        # Verify static JS
+        js_resp = await client.get("/static/app.js")
+        assert js_resp.status_code == 200
+        assert "switchView" in js_resp.text
+
+        # Health endpoint
+        health_resp = await client.get("/api/v1/health")
+        assert health_resp.status_code == 200
+        assert health_resp.json()["status"] == "online"

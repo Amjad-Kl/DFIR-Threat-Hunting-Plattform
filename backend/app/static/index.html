@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🛡️ Threat Hunting Workbench</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" style="position: fixed; top: 20px; right: 24px; z-index: 9999; display: flex; flex-direction: column;"></div>
+
+  <!-- Sidebar -->
+  <aside id="sidebar">
+    <div class="brand">
+      <div class="brand-icon">🛡️</div>
+      <div>
+        <div class="brand-title">THREAT WORKBENCH</div>
+        <div class="brand-subtitle">Local DFIR Platform v1.0</div>
+      </div>
+    </div>
+
+    <!-- Active Case Box -->
+    <div class="case-selector-box">
+      <div class="case-selector-label">
+        <span>Investigation Case</span>
+        <button id="btn-new-case" class="btn btn-primary btn-sm" title="Create New Case">+ New</button>
+      </div>
+      <select id="case-select" class="case-select">
+        <option value="">Loading cases...</option>
+      </select>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="nav-menu">
+      <div class="nav-item active" data-view="dashboard">
+        <span>📊</span> Dashboard
+      </div>
+      <div class="nav-item" data-view="evidence">
+        <span>📦</span> Evidence Ingestion
+      </div>
+      <div class="nav-item" data-view="events">
+        <span>🔍</span> Event Explorer
+      </div>
+      <div class="nav-item" data-view="timeline">
+        <span>⏱️</span> Forensic Timeline
+      </div>
+      <div class="nav-item" data-view="hunting">
+        <span>🎯</span> Threat Detection
+      </div>
+      <div class="nav-item" data-view="iocs">
+        <span>🛡️</span> IOC Management
+      </div>
+      <div class="nav-item" data-view="reports">
+        <span>📄</span> Reports & Export
+      </div>
+    </nav>
+
+    <!-- Sidebar Footer -->
+    <div class="sidebar-footer">
+      <div class="status-pill">
+        <span class="status-dot"></span>
+        <span>Local / Offline</span>
+      </div>
+      <span>v1.0-dev</span>
+    </div>
+  </aside>
+
+  <!-- Main Content Area -->
+  <main id="main-content">
+
+    <!-- Top Header -->
+    <header id="header">
+      <div class="header-left">
+        <div id="header-case-name" class="case-title">Loading case...</div>
+        <span id="header-classification" class="badge badge-info">INVESTIGATION</span>
+      </div>
+      <div class="header-stats">
+        <div class="stat-pill">Events: <strong id="header-stat-events">0</strong></div>
+        <div class="stat-pill">Findings: <strong id="header-stat-findings" style="color:var(--accent-critical);">0</strong></div>
+        <div class="stat-pill">Artifacts: <strong id="header-stat-artifacts">0</strong></div>
+        <button class="btn btn-primary" onclick="runAnalysis('/analyze')">⚡ Run Hunt</button>
+      </div>
+    </header>
+
+    <!-- VIEW 1: DASHBOARD -->
+    <section id="view-dashboard" class="view-container active">
+      <h2 style="font-size: 18px; margin-bottom: 16px;">Case Overview</h2>
+      <div class="grid-cards">
+        <div class="card">
+          <div class="card-header">Total Ingested Events</div>
+          <div id="dash-total-events" class="card-value">0</div>
+          <div id="dash-timerange" class="card-subtext">No data</div>
+        </div>
+        <div class="card">
+          <div class="card-header">Active Sources</div>
+          <div id="dash-sources" style="margin-top: 8px;"></div>
+        </div>
+        <div class="card">
+          <div class="card-header">Severity Breakdown</div>
+          <div id="dash-severities" style="margin-top: 8px;"></div>
+        </div>
+      </div>
+
+      <div class="table-wrapper">
+        <div style="padding: 14px 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+          <h3 style="font-size: 14px;">Recent High Priority Findings</h3>
+          <button class="btn btn-secondary btn-sm" onclick="switchView('hunting')">View All Findings →</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 100px;">Severity</th>
+              <th>Finding Title</th>
+              <th>Rule</th>
+              <th style="width: 160px;">Detected At</th>
+            </tr>
+          </thead>
+          <tbody id="dash-findings-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- VIEW 2: EVIDENCE INGESTION -->
+    <section id="view-evidence" class="view-container">
+      <h2 style="font-size: 18px; margin-bottom: 8px;">Evidence & Forensic Artifact Ingestion</h2>
+      <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px;">
+        Import Windows Event Logs (.evtx), Prefetch (.pf), Registry Hives (SYSTEM, SOFTWARE, NTUSER.DAT), or Amcache.hve.
+      </p>
+
+      <!-- Dropzone -->
+      <div id="dropzone" class="dropzone">
+        <div class="dropzone-icon">📁</div>
+        <div style="font-size: 15px; font-weight: 600; margin-bottom: 4px;">Drag & Drop forensic files here, or click to browse</div>
+        <div style="font-size: 12px; color: var(--text-dim);">Files are hashed via SHA-256 immediately upon ingestion to preserve evidence integrity.</div>
+        <input type="file" id="file-input" style="display: none;">
+      </div>
+
+      <div class="table-wrapper">
+        <div style="padding: 14px 16px; border-bottom: 1px solid var(--border);">
+          <h3 style="font-size: 14px;">Ingested Artifact Inventory</h3>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Filename</th>
+              <th>Artifact Type</th>
+              <th>Size</th>
+              <th>SHA-256 Hash</th>
+              <th>Status</th>
+              <th>Events</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="artifacts-table-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- VIEW 3: EVENT EXPLORER -->
+    <section id="view-events" class="view-container">
+      <h2 style="font-size: 18px; margin-bottom: 16px;">Normalized Event Explorer</h2>
+
+      <!-- Search & Filters -->
+      <div class="filter-bar">
+        <input type="text" id="ev-search-input" class="input-field" placeholder="Full-text search (cmdline, process, path, raw)..." style="width: 320px;" onkeydown="if(event.key==='Enter') searchEventsFTS()">
+        <button class="btn btn-primary" onclick="searchEventsFTS()">🔍 Search</button>
+
+        <select id="ev-source-filter" class="input-field" onchange="loadEvents()">
+          <option value="">All Sources</option>
+          <option value="evtx">EVTX</option>
+          <option value="sysmon">Sysmon</option>
+          <option value="prefetch">Prefetch</option>
+          <option value="registry">Registry</option>
+          <option value="amcache">Amcache</option>
+        </select>
+
+        <select id="ev-sev-filter" class="input-field" onchange="loadEvents()">
+          <option value="">All Severities</option>
+          <option value="critical">Critical</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+          <option value="info">Info</option>
+        </select>
+
+        <label style="font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; cursor: pointer;">
+          <input type="checkbox" id="ev-only-sus" onchange="loadEvents()">
+          Only Suspicious
+        </label>
+
+        <span id="ev-total-count" style="margin-left: auto; font-size: 12px; color: var(--text-dim);"></span>
+      </div>
+
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 150px;">Timestamp</th>
+              <th style="width: 80px;">Source</th>
+              <th style="width: 140px;">Event Type</th>
+              <th style="width: 90px;">Severity</th>
+              <th style="width: 140px;">Process</th>
+              <th>Target / Command Line / Key</th>
+              <th style="width: 90px;">Flags</th>
+            </tr>
+          </thead>
+          <tbody id="events-table-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- VIEW 4: TIMELINE -->
+    <section id="view-timeline" class="view-container">
+      <h2 style="font-size: 18px; margin-bottom: 16px;">Unified Forensic Timeline</h2>
+
+      <div class="grid-cards">
+        <div class="card">
+          <div class="card-header">Events on Timeline</div>
+          <div id="tl-total-events" class="card-value">0</div>
+        </div>
+        <div class="card">
+          <div class="card-header">Suspicious Activity</div>
+          <div id="tl-suspicious-count" class="card-value" style="color: var(--accent-critical);">0</div>
+        </div>
+        <div class="card">
+          <div class="card-header">Activity Bursts</div>
+          <div id="tl-clusters-count" class="card-value" style="color: var(--accent-high);">0</div>
+        </div>
+        <div class="card">
+          <div class="card-header">Inactivity Gaps (>1h)</div>
+          <div id="tl-gaps-count" class="card-value">0</div>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <div>
+          <h3 style="font-size: 14px; margin-bottom: 10px;">⚡ High Activity Clusters</h3>
+          <div id="tl-clusters-list"></div>
+        </div>
+        <div>
+          <h3 style="font-size: 14px; margin-bottom: 10px;">⏳ Activity Inactivity Gaps</h3>
+          <div id="tl-gaps-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 5: THREAT DETECTION -->
+    <section id="view-hunting" class="view-container">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h2 style="font-size: 18px;">Threat Detection & Hunting Findings</h2>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn btn-primary" onclick="runAnalysis('/analyze')">⚡ Run Full Hunt</button>
+          <button class="btn btn-secondary" onclick="runAnalysis('/analyze/ioc')">🎯 IOC Matcher</button>
+          <button class="btn btn-secondary" onclick="runAnalysis('/analyze/persistence')">🔒 Persistence</button>
+          <button class="btn btn-secondary" onclick="runAnalysis('/analyze/suspicious')">⚠️ Suspicious Patterns</button>
+          <button class="btn btn-secondary" onclick="runAnalysis('/analyze/yara')">🧬 YARA Scan</button>
+        </div>
+      </div>
+
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 100px;">Severity</th>
+              <th>Finding Title & Description</th>
+              <th style="width: 140px;">Type</th>
+              <th style="width: 150px;">Rule / Technique</th>
+              <th style="width: 140px;">Status</th>
+            </tr>
+          </thead>
+          <tbody id="findings-table-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- VIEW 6: IOC MANAGEMENT -->
+    <section id="view-iocs" class="view-container">
+      <h2 style="font-size: 18px; margin-bottom: 16px;">Indicators of Compromise (IOCs)</h2>
+
+      <!-- Add IOC Form -->
+      <div class="card" style="margin-bottom: 20px;">
+        <div class="card-header">Add New Indicator</div>
+        <form id="ioc-form" style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;">
+          <select id="ioc-type-input" class="input-field" required>
+            <option value="ip">IP Address</option>
+            <option value="domain">Domain</option>
+            <option value="hash_sha256">SHA-256 Hash</option>
+            <option value="hash_md5">MD5 Hash</option>
+            <option value="filename">Filename</option>
+            <option value="url">URL</option>
+          </select>
+          <input type="text" id="ioc-val-input" class="input-field" placeholder="Value (e.g. 198.51.100.42 or malware.exe)" style="flex: 1;" required>
+          <input type="text" id="ioc-desc-input" class="input-field" placeholder="Description / Threat Intel Source" style="flex: 1;">
+          <select id="ioc-conf-input" class="input-field">
+            <option value="high">High Confidence</option>
+            <option value="medium">Medium Confidence</option>
+            <option value="low">Low Confidence</option>
+          </select>
+          <button type="submit" class="btn btn-primary">+ Add IOC</button>
+        </form>
+      </div>
+
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 120px;">Type</th>
+              <th>Indicator Value</th>
+              <th>Description</th>
+              <th style="width: 120px;">Confidence</th>
+              <th style="width: 80px;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="iocs-table-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- VIEW 7: REPORTS -->
+    <section id="view-reports" class="view-container">
+      <h2 style="font-size: 18px; margin-bottom: 16px;">Investigation Reports</h2>
+
+      <div style="display: flex; gap: 12px; margin-bottom: 24px;">
+        <button class="btn btn-primary" onclick="generateReport('full')">📄 Generate Full Technical Report</button>
+        <button class="btn btn-secondary" onclick="generateReport('executive')">📊 Generate Executive Summary</button>
+      </div>
+
+      <div class="table-wrapper">
+        <div style="padding: 14px 16px; border-bottom: 1px solid var(--border);">
+          <h3 style="font-size: 14px;">Generated Report Archives</h3>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Report Filename</th>
+              <th style="width: 120px;">File Size</th>
+              <th style="width: 140px;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="reports-table-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL: New Case -->
+  <div id="new-case-modal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title">Create New Investigation Case</div>
+        <button class="modal-close" onclick="closeModal()">×</button>
+      </div>
+      <form id="new-case-form">
+        <div class="modal-body" style="display: flex; flex-direction: column; gap: 12px;">
+          <div>
+            <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">Case Name *</label>
+            <input type="text" id="case-name-input" class="input-field" style="width: 100%;" placeholder="e.g. INC-2026-001 Ransomware Triage Host A" required>
+          </div>
+          <div>
+            <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">Classification</label>
+            <select id="case-class-input" class="input-field" style="width: 100%;">
+              <option value="incident">Incident Response</option>
+              <option value="threat_hunt">Threat Hunt</option>
+              <option value="investigation">General Investigation</option>
+              <option value="exercise">Exercise / Drill</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">Lead Analyst</label>
+            <input type="text" id="case-analyst-input" class="input-field" style="width: 100%;" placeholder="Analyst Name">
+          </div>
+          <div>
+            <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">Description / Context</label>
+            <textarea id="case-desc-input" class="input-field" style="width: 100%; height: 80px; resize: vertical;" placeholder="Background, initial alert details, scope..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create Case</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Event Detail -->
+  <div id="event-modal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 750px;">
+      <div class="modal-header">
+        <div id="modal-event-title" class="modal-title">Event Detail</div>
+        <button class="modal-close" onclick="closeModal()">×</button>
+      </div>
+      <div class="modal-body" style="display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div><span style="color:var(--text-dim); font-size:11px; text-transform:uppercase;">Timestamp</span><div id="modal-event-time" style="font-weight:600;"></div></div>
+          <div><span style="color:var(--text-dim); font-size:11px; text-transform:uppercase;">Source Channel</span><div id="modal-event-source" style="font-weight:600;"></div></div>
+          <div><span style="color:var(--text-dim); font-size:11px; text-transform:uppercase;">ATT&CK Technique</span><div id="modal-event-mitre" style="font-weight:600; color:var(--primary);"></div></div>
+        </div>
+        <div>
+          <span style="color:var(--text-dim); font-size:11px; text-transform:uppercase;">Target / Command Line / Key</span>
+          <div id="modal-event-cmd" style="font-family: monospace; font-size: 12px; background: #080c14; padding: 8px; border-radius: 4px; word-break: break-all; margin-top: 4px;"></div>
+        </div>
+        <div>
+          <span style="color:var(--text-dim); font-size:11px; text-transform:uppercase;">Raw JSON Event Payload</span>
+          <pre id="modal-event-raw" class="raw-json" style="margin-top: 4px;"></pre>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

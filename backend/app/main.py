@@ -1,8 +1,11 @@
 """Threat Hunting Workbench - FastAPI Main Entrypoint."""
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.api.analysis import router as analysis_router
 from app.api.artifacts import router as artifacts_router
@@ -55,15 +58,35 @@ app.include_router(reports_router, prefix=API_PREFIX)
 app.include_router(yara_router, prefix=API_PREFIX)
 
 
+# Static files directory for local Web GUI
+STATIC_DIR = Path(__file__).parent / "static"
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+
 @app.get("/")
 async def root():
-    """Health check and platform status."""
+    """Serve the local Threat Hunting Workbench Web GUI."""
+    index_file = STATIC_DIR / "index.html"
+    if index_file.exists():
+        return FileResponse(index_file)
     return {
         "status": "online",
         "app": settings.app_name,
         "version": settings.app_version,
         "mode": "local_offline",
         "docs_url": "/docs",
+    }
+
+
+@app.get("/api/v1/health")
+async def health():
+    """Health check and platform status."""
+    return {
+        "status": "online",
+        "app": settings.app_name,
+        "version": settings.app_version,
+        "mode": "local_offline",
     }
 
 
