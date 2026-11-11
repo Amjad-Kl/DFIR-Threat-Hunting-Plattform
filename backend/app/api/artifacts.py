@@ -231,31 +231,52 @@ async def parse_artifact(artifact_id: str, db: aiosqlite.Connection = Depends(ge
 
     events_inserted = 0
     try:
+        parser = None
         if art_type == ArtifactType.EVTX.value:
             from app.parsers.evtx_parser import EvtxParser
             parser = EvtxParser()
+        elif art_type == ArtifactType.PREFETCH.value:
+            from app.parsers.prefetch_parser import PrefetchParser
+            parser = PrefetchParser()
+        elif art_type == ArtifactType.REGISTRY.value:
+            from app.parsers.registry_parser import RegistryParser
+            parser = RegistryParser()
+        elif art_type == ArtifactType.AMCACHE.value:
+            from app.parsers.amcache_parser import AmcacheParser
+            parser = AmcacheParser()
+
+        if parser is not None:
+            batch = []
+            insert_sql = """
+                INSERT INTO events (
+                    id, case_id, artifact_id, timestamp, source_type, event_type, severity,
+                    source_host, source_user, source_ip, dest_host, dest_ip, dest_port,
+                    process_name, process_path, process_pid, parent_process, parent_pid,
+                    command_line, file_path, file_hash, registry_key, registry_value,
+                    raw_data, channel, event_id, is_suspicious, is_ioc_match
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """
             for ev in parser.parse(filepath, case_id=case_id, artifact_id=artifact_id):
-                await db.execute(
-                    """
-                    INSERT INTO events (
-                        id, case_id, artifact_id, timestamp, source_type, event_type, severity,
-                        source_host, source_user, source_ip, dest_host, dest_ip, dest_port,
-                        process_name, process_path, process_pid, parent_process, parent_pid,
-                        command_line, file_path, file_hash, registry_key, registry_value,
-                        raw_data, channel, event_id, is_suspicious, is_ioc_match
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        ev.id, ev.case_id, ev.artifact_id, ev.timestamp.isoformat(),
-                        ev.source_type.value, ev.event_type.value, ev.severity.value,
-                        ev.source_host, ev.source_user, ev.source_ip, ev.dest_host,
-                        ev.dest_ip, ev.dest_port, ev.process_name, ev.process_path,
-                        ev.process_pid, ev.parent_process, ev.parent_pid, ev.command_line,
-                        ev.file_path, ev.file_hash, ev.registry_key, ev.registry_value,
-                        ev.raw_data, ev.channel, ev.event_id, 0, 0,
-                    ),
+                record = (
+                    ev.id, ev.case_id, ev.artifact_id, ev.timestamp.isoformat(),
+                    ev.source_type.value, ev.event_type.value, ev.severity.value,
+                    ev.source_host, ev.source_user, ev.source_ip, ev.dest_host,
+                    ev.dest_ip, ev.dest_port, ev.process_name, ev.process_path,
+                    ev.process_pid, ev.parent_process, ev.parent_pid, ev.command_line,
+                    ev.file_path, ev.file_hash, ev.registry_key, ev.registry_value,
+                    ev.raw_data, ev.channel, ev.event_id,
+                    1 if ev.is_suspicious else 0,
+                    1 if ev.is_ioc_match else 0,
                 )
-                events_inserted += 1
+                batch.append(record)
+                if len(batch) >= 1000:
+                    await db.executemany(insert_sql, batch)
+                    events_inserted += len(batch)
+                    batch.clear()
+
+            if batch:
+                await db.executemany(insert_sql, batch)
+                events_inserted += len(batch)
 
         # Mark done
         await db.execute(
@@ -273,7 +294,7 @@ async def parse_artifact(artifact_id: str, db: aiosqlite.Connection = Depends(ge
             action="parse",
             entity_type="artifact",
             entity_id=artifact_id,
-            details={"events_extracted": events_inserted},
+            details={"events_extracted": events_inserted, "artifact_type": art_type},
         )
 
         return {

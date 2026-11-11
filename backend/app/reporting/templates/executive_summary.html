@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Executive Summary – {{ case.name }}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #fff; color: #1a1a2e; padding: 40px; line-height: 1.6; }
+        .header { border-bottom: 3px solid #0f4c81; padding-bottom: 20px; margin-bottom: 30px; }
+        .header h1 { color: #0f4c81; font-size: 24px; }
+        .section { margin-bottom: 25px; }
+        .section h2 { color: #0f4c81; font-size: 18px; border-bottom: 1px solid #e0e0e0; padding-bottom: 6px; margin-bottom: 12px; }
+        .risk-indicator { display: inline-block; padding: 6px 20px; border-radius: 6px; font-weight: 700; font-size: 16px; }
+        .risk-critical { background: #fde8e8; color: #c0392b; border: 2px solid #c0392b; }
+        .risk-high { background: #fef3cd; color: #856404; border: 2px solid #f0ad4e; }
+        .risk-medium { background: #d1ecf1; color: #0c5460; border: 2px solid #17a2b8; }
+        .risk-low { background: #d4edda; color: #155724; border: 2px solid #28a745; }
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 15px 0; }
+        .stat-card { border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; text-align: center; }
+        .stat-card .number { font-size: 28px; font-weight: 700; color: #0f4c81; }
+        .stat-card .label { font-size: 12px; color: #666; text-transform: uppercase; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #f5f5f5; text-align: left; padding: 8px 12px; font-size: 12px; }
+        td { padding: 8px 12px; border-bottom: 1px solid #e0e0e0; font-size: 13px; }
+        .footer { margin-top: 30px; padding-top: 15px; border-top: 1px solid #e0e0e0; color: #999; font-size: 11px; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Executive Summary – Security Investigation</h1>
+        <p style="color: #666; margin-top: 6px;">
+            Case: <strong>{{ case.name }}</strong> |
+            Classification: {{ case.classification | upper }} |
+            Date: {{ generated_at[:10] }} |
+            Analyst: {{ analyst }}
+        </p>
+    </div>
+
+    <!-- Risk Level -->
+    <div class="section">
+        <h2>Overall Risk Assessment</h2>
+        {% if severity_counts.critical > 0 %}
+        <span class="risk-indicator risk-critical">CRITICAL – Immediate Action Required</span>
+        <p style="margin-top: 10px;">{{ severity_counts.critical }} critical finding(s) detected indicating active compromise or significant security breach.</p>
+        {% elif severity_counts.high > 0 %}
+        <span class="risk-indicator risk-high">HIGH – Urgent Review Required</span>
+        <p style="margin-top: 10px;">{{ severity_counts.high }} high severity finding(s) requiring immediate attention.</p>
+        {% elif severity_counts.medium > 0 %}
+        <span class="risk-indicator risk-medium">MEDIUM – Further Investigation Recommended</span>
+        <p style="margin-top: 10px;">{{ severity_counts.medium }} medium severity finding(s) that warrant deeper analysis.</p>
+        {% else %}
+        <span class="risk-indicator risk-low">LOW – No Significant Threats Identified</span>
+        <p style="margin-top: 10px;">Analysis did not reveal high-severity indicators of compromise.</p>
+        {% endif %}
+    </div>
+
+    <!-- Key Metrics -->
+    <div class="section">
+        <h2>Key Metrics</h2>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="number">{{ stats.total_events or 0 }}</div>
+                <div class="label">Events Analyzed</div>
+            </div>
+            <div class="stat-card">
+                <div class="number">{{ total_findings }}</div>
+                <div class="label">Total Findings</div>
+            </div>
+            <div class="stat-card">
+                <div class="number">{{ artifacts | length }}</div>
+                <div class="label">Evidence Sources</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Findings -->
+    <div class="section">
+        <h2>Top Findings</h2>
+        <table>
+            <thead><tr><th>Severity</th><th>Finding</th><th>Technique</th></tr></thead>
+            <tbody>
+                {% for finding in findings[:10] %}
+                <tr>
+                    <td><strong style="color: {% if finding.severity == 'critical' %}#c0392b{% elif finding.severity == 'high' %}#856404{% else %}#0c5460{% endif %}">{{ finding.severity | upper }}</strong></td>
+                    <td>{{ finding.title }}</td>
+                    <td>{{ finding.rule_name or '-' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Recommendations -->
+    <div class="section">
+        <h2>Recommended Actions</h2>
+        <ol style="padding-left: 20px;">
+            {% if severity_counts.critical > 0 %}
+            <li><strong>Isolate affected systems</strong> from the network immediately</li>
+            <li><strong>Preserve evidence</strong> – do not reboot or modify affected systems</li>
+            <li><strong>Engage incident response team</strong> for full forensic investigation</li>
+            {% endif %}
+            {% if severity_counts.high > 0 %}
+            <li><strong>Review all high-severity findings</strong> and validate with contextual analysis</li>
+            <li><strong>Check additional hosts</strong> for similar indicators of compromise</li>
+            {% endif %}
+            <li><strong>Review detailed technical report</strong> for complete analysis and evidence</li>
+            <li><strong>Update IOC blocklists</strong> with identified indicators</li>
+        </ol>
+    </div>
+
+    <div class="footer">
+        <p>CONFIDENTIAL – Report ID: {{ report_id }} | Generated by Threat Hunting Workbench v1.0</p>
+    </div>
+</body>
+</html>
