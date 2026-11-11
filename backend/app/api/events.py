@@ -187,7 +187,7 @@ async def search_events(
 @router.get("/cases/{case_id}/timeline")
 async def get_timeline_aggregations(
     case_id: str,
-    interval: str = Query("hour", regex="^(hour|day)$"),
+    interval: str = Query("hour", pattern="^(hour|day)$"),
     db: aiosqlite.Connection = Depends(get_db),
 ):
     """Bucket events by hour or day for timeline histogram rendering."""

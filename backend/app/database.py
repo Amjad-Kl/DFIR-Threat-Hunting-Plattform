@@ -27,7 +27,7 @@ async def init_db() -> None:
     settings.reports_dir.mkdir(parents=True, exist_ok=True)
 
     async with aiosqlite.connect(DATABASE_PATH) as db:
-        await db.execute("PRAGMA journal_mode=WAL;")
+        await db.execute("PRAGMA journal_mode=DELETE;")
         await db.execute("PRAGMA foreign_keys=ON;")
         schema = get_schema_sql()
         await db.executescript(schema)

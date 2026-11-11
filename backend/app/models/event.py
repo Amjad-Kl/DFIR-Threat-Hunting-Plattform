@@ -8,7 +8,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class EventSeverity(str, Enum):
@@ -101,5 +101,4 @@ class NormalizedEvent(BaseModel):
     mitre_tactic: Optional[str] = None
     mitre_technique: Optional[str] = None
 
-    class Config:
-        json_encoders = {datetime: lambda v: v.isoformat()}
+    model_config = ConfigDict(from_attributes=True)

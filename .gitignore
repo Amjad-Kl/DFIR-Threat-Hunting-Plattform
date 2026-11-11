@@ -38,6 +38,7 @@ build/
 htmlcov/
 .coverage
 coverage.xml
+.pytest_cache/
 
 # Evidence storage (don't commit case data!)
 backend/cases_data/

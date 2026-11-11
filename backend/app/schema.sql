@@ -1,7 +1,7 @@
 -- Threat Hunting Workbench - Database Schema v1
 -- SQLite with FTS5 for full-text search
 
-PRAGMA journal_mode=WAL;
+PRAGMA journal_mode=DELETE;
 PRAGMA foreign_keys=ON;
 
 -- ============================================================
